@@ -24,7 +24,7 @@ class RasterDEMTileSource extends RasterTileSource implements Source {
 
     serialize() {
         return {
-            type: 'raster-terrain',
+            type: 'raster-dem',
             url: this.url,
             tileSize: this.tileSize,
             tiles: this.tiles,
