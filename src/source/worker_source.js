@@ -9,6 +9,12 @@ import type {SerializedCollisionTile} from '../symbol/collision_tile';
 import type {SerializedStructArray} from '../util/struct_array';
 import type {RequestParameters} from '../util/ajax';
 
+export type RawImageData = {
+    data: Uint8ClampedArray,
+    width: number,
+    height: number
+};
+
 export type TileParameters = {
     source: string,
     uid: string,
@@ -30,6 +36,16 @@ export type WorkerTileParameters = TileParameters & {
     tileSize: number,
     overscaling: number,
 } & PlacementConfig;
+
+export type WorkerRasterTileParameters = TileParameters & {
+    coord: TileCoord,
+    request: RequestParameters,
+    zoom: number,
+    maxZoom: number,
+    tileSize: number,
+    overscaling: number,
+    rawImageData: RawImageData
+};
 
 export type WorkerTileResult = {
     buckets: Array<SerializedBucket>,

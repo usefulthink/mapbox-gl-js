@@ -75,7 +75,7 @@ class StyleLayer extends Evented {
         this._layoutSpecifications = styleSpec[`layout_${this.type}`];
 
         this._paintTransitions = {}; // {[propertyName]: StyleTransition}
-        this._paintTransitionOptions = {}; // 
+        this._paintTransitionOptions = {}; //
         this._paintDeclarations = {}; // {[className]: {[propertyName]: StyleDeclaration}}
         this._layoutDeclarations = {}; // {[propertyName]: StyleDeclaration}
         this._layoutFunctions = {}; // {[propertyName]: Boolean}
@@ -397,6 +397,7 @@ const subclasses = {
     'line': require('./style_layer/line_style_layer'),
     'symbol': require('./style_layer/symbol_style_layer'),
     'background': StyleLayer,
+    'hillshade': StyleLayer,
     'raster': StyleLayer
 };
 
