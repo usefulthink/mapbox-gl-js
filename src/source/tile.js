@@ -19,6 +19,7 @@ import type StyleLayer from '../style/style_layer';
 import type TileCoord from './tile_coord';
 import type {WorkerTileResult} from './worker_source';
 import type Point from '@mapbox/point-geometry';
+import type {DEMData} from '../data/dem_data';
 
 export type TileState =
     | 'loading'   // Tile data is in the process of loading.
@@ -62,6 +63,8 @@ class Tile {
     workerID: number;
     vtLayers: {[string]: VectorTileLayer};
 
+    neighboringTiles: ?Object;
+    dem: ?DEMData;
     aborted: ?boolean;
     request: any;
     texture: any;

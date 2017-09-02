@@ -44,7 +44,7 @@ type PainterOptions = {
     showTileBoundaries: boolean,
     rotating: boolean,
     zooming: boolean
-}
+};
 
 /**
  * Initialize a new painter object.
@@ -76,6 +76,8 @@ class Painter {
     debugVAO: VertexArrayObject;
     rasterBoundsBuffer: VertexBuffer;
     rasterBoundsVAO: VertexArrayObject;
+    incompleteHillshadeBoundsBuffer: VertexBuffer;
+    incompleteHillshadeBoundsVAO: VertexArrayObject;
     extTextureFilterAnisotropic: any;
     extTextureFilterAnisotropicMax: any;
     _tileClippingMaskIDs: { [number]: number };

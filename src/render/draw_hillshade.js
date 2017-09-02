@@ -25,7 +25,7 @@ function drawHillshade(painter, sourceCache, layer, coords) {
 
     for (const coord of coords) {
         const tile = sourceCache.getTile(coord);
-        if (!tile.hillshadeTexture) prepareTerrain(painter, tile, layer);
+        if (!tile.texture) prepareHillshade(painter, tile, layer);
 
         tile.bordersLoaded = true;
         if (painter.transform.tileZoom < maxzoom) {
@@ -37,7 +37,7 @@ function drawHillshade(painter, sourceCache, layer, coords) {
             }
         }
 
-        tile.hillshadeTexture.render(tile, layer);
+        renderHillshade(painter, tile, layer);
     }
 
 }
@@ -45,7 +45,7 @@ function drawHillshade(painter, sourceCache, layer, coords) {
 // TODO create OffscreenTexture class for extrusions + terrain
 // preprocessing ?
 class HillshadeTexture {
-    constructor (gl, painter, layer) {
+    constructor (gl, painter, layer, tile) {
         this.gl = gl;
         this.width = TERRAIN_TILE_WIDTH;
         this.height = TERRAIN_TILE_HEIGHT;
@@ -53,53 +53,28 @@ class HillshadeTexture {
         this.layer = layer;
 
         gl.activeTexture(gl.TEXTURE0);
-        this.texture = gl.createTexture();
+        tile.texture = gl.createTexture();
 
         // this is needed because SpriteAtlas sets this value to true, which causes the 0 alpha values that we pass to
         // the terrain_prepare shaders to 0 out all values and render the texture blank.
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.bindTexture(gl.TEXTURE_2D, tile.texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        this.texture.width = this.width;
-        this.texture.height = this.height;
+        tile.texture.width = this.width;
+        tile.texture.height = this.height;
 
         // TODO: can we reuse fbos?
         this.fbo = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
         gl.viewport(0, 0, this.width, this.height);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tile.texture, 0);
     }
-
-    render(tile, layer) {
-        const gl = this.painter.gl;
-        const program = this.painter.useProgram('hillshade');
-        const posMatrix = this.painter.transform.calculatePosMatrix(tile.coord);
-        setLight(program, this.painter);
-
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        gl.uniformMatrix4fv(program.uniforms.u_matrix, false, posMatrix);
-        gl.uniform1i(program.uniforms.u_image, 0);
-        gl.uniform1i(program.uniforms.u_mode, 7);
-        gl.uniform1f(program.uniforms.u_mipmap, 0);
-        gl.uniform4fv(program.uniforms.u_shadow, layer.paint["hillshade-shadow-color"]);
-        gl.uniform4fv(program.uniforms.u_highlight, layer.paint["hillshade-highlight-color"]);
-        gl.uniform4fv(program.uniforms.u_accent, layer.paint["hillshade-accent-color"]);
-
-        // this is to prevent purple/yellow seams from flashing when the dem tiles haven't been totally
-        // backfilled from their neighboring tiles.
-        const buffer = tile.bordersLoaded ? this.painter.rasterBoundsBuffer : this.painter.incompleteHillshadeBoundsBuffer;
-        const vao = tile.bordersLoaded ? this.painter.rasterBoundsVAO : this.painter.incompleteHillshadeBoundsVAO;
-        vao.bind(gl, program, buffer);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
-    }
-
 
     unbindFramebuffer() {
         const gl = this.painter.gl;
@@ -120,8 +95,32 @@ function setLight(program, painter) {
     gl.uniform1f(program.uniforms.u_lightintensity, light.calculated.intensity);
 }
 
+function renderHillshade(painter, tile, layer){
+        const gl = painter.gl;
+        const program = painter.useProgram('hillshade');
+        const posMatrix = painter.transform.calculatePosMatrix(tile.coord);
+        setLight(program, painter);
 
-function prepareTerrain(painter, tile, layer) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+        gl.uniformMatrix4fv(program.uniforms.u_matrix, false, posMatrix);
+        gl.uniform1i(program.uniforms.u_image, 0);
+        gl.uniform1i(program.uniforms.u_mode, 7);
+        gl.uniform1f(program.uniforms.u_mipmap, 0);
+        gl.uniform4fv(program.uniforms.u_shadow, layer.paint["hillshade-shadow-color"]);
+        gl.uniform4fv(program.uniforms.u_highlight, layer.paint["hillshade-highlight-color"]);
+        gl.uniform4fv(program.uniforms.u_accent, layer.paint["hillshade-accent-color"]);
+
+        // this is to prevent purple/yellow seams from flashing when the dem tiles haven't been totally
+        // backfilled from their neighboring tiles.
+        const buffer = tile.bordersLoaded ? painter.rasterBoundsBuffer : painter.incompleteHillshadeBoundsBuffer;
+        const vao = tile.bordersLoaded ? painter.rasterBoundsVAO : painter.incompleteHillshadeBoundsVAO;
+        vao.bind(gl, program, buffer);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
+}
+
+
+function prepareHillshade(painter, tile, layer) {
     const gl = painter.gl;
     // decode rgba levels by using integer overflow to convert each Uint32Array element -> 4 Uint8Array elements.
     // ex.
@@ -152,7 +151,7 @@ function prepareTerrain(painter, tile, layer) {
         gl.texImage2D(gl.TEXTURE_2D, i, gl.RGBA, pixelData[i].width, pixelData[i].height, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixelData[i].data);
     }
 
-    tile.hillshadeTexture = new HillshadeTexture(gl, painter, layer, tile);
+    const hillshadeTexture = new HillshadeTexture(gl, painter, layer, tile);
 
     const matrix = mat4.create();
     // Flip rendering at y axis.
@@ -173,6 +172,6 @@ function prepareTerrain(painter, tile, layer) {
     vao.bind(gl, program, buffer);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
 
-    tile.hillshadeTexture.unbindFramebuffer();
+    hillshadeTexture.unbindFramebuffer();
     tile.prepared = true;
 }

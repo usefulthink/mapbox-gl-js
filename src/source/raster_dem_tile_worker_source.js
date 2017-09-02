@@ -4,7 +4,6 @@ const WorkerTile = require('./worker_tile');
 const {DEMData} = require('../data/dem_data');
 
 import type {
-    WorkerSource,
     WorkerRasterTileParameters,
     WorkerTileCallback
 } from '../source/worker_source';
@@ -19,7 +18,7 @@ import type StyleLayerIndex from '../style/style_layer_index';
  * @private
  */
 
-class RasterDEMTileWorkerSource implements WorkerSource {
+class RasterDEMTileWorkerSource {
     actor: Actor;
     layerIndex: StyleLayerIndex;
     loading: { [string]: { [string]: WorkerTile } };

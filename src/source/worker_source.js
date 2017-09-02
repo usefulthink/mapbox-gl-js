@@ -8,16 +8,17 @@ import type {SerializedFeatureIndex} from '../data/feature_index';
 import type {SerializedCollisionTile} from '../symbol/collision_tile';
 import type {SerializedStructArray} from '../util/struct_array';
 import type {RequestParameters} from '../util/ajax';
-
-export type RawImageData = {
-    data: Uint8ClampedArray,
-    width: number,
-    height: number
-};
+import type SerializedDEMData from '../data/dem_data';
 
 export type TileParameters = {
     source: string,
     uid: string,
+};
+
+export type RawImageData = {
+    data: Uint8ClampedArray,
+    height: number,
+    width: number
 };
 
 export type PlacementConfig = {
@@ -44,7 +45,7 @@ export type WorkerRasterTileParameters = TileParameters & {
     maxZoom: number,
     tileSize: number,
     overscaling: number,
-    rawImageData: RawImageData
+    rawImageData: RawImageData,
 };
 
 export type WorkerTileResult = {
@@ -55,7 +56,11 @@ export type WorkerTileResult = {
     rawTileData?: ArrayBuffer,
 };
 
-export type WorkerTileCallback = (error: ?Error, result: ?WorkerTileResult, transferables: ?Array<Transferable>) => void;
+export type WorkerRasterDEMTileResult = {
+    serializedDEMData: SerializedDEMData
+};
+
+export type WorkerTileCallback = (error: ?Error, result: ?(WorkerTileResult | WorkerRasterDEMTileResult), transferables: ?Array<Transferable>) => void;
 
 export type RedoPlacementParameters = TileParameters & PlacementConfig;
 
