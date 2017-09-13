@@ -47,6 +47,8 @@ function parseExpression(expr: mixed, context: ParsingContext): ?Expression {
                     parsed = wrapForType(expected, parsed, context);
                 }
 
+                if (!parsed) return null;
+
                 if (checkSubtype(expected, parsed.type, context)) {
                     return null;
                 }
@@ -70,7 +72,7 @@ function wrapForType(expected: Type, expression: Expression, context: ParsingCon
         // workaround for circular dependency
         const CompoundExpr: Class<CompoundExpression> = (context.definitions['to-color']: any);
         const definition = CompoundExpr.definitions['to-color'];
-        return new CompoundExpr(expression.key, 'to-color', expected, definition[2], [expression]);
+        return CompoundExpr.create(context, 'to-color', expected, definition[2], [expression]);
     } else if (
         expected.kind === 'Number' ||
         expected.kind === 'String' ||

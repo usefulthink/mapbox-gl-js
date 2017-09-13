@@ -1,12 +1,14 @@
 // @flow
 
 const { toString } = require('./types');
-const { ParsingContext } = require('./expression');
+const { ParsingContext, CompilationContext } = require('./expression');
 const parseExpression = require('./parse_expression');
 const checkSubtype = require('./check_subtype');
 const assert = require('assert');
+const Literal = require('./definitions/literal');
+const evaluationContext = require('./evaluation_context');
 
-import type { Expression, CompilationContext }  from './expression';
+import type { Expression }  from './expression';
 import type { Type } from './types';
 
 type Varargs = {| type: Type |};
@@ -30,6 +32,10 @@ class CompoundExpression implements Expression {
         this.type = type;
         this.compileFromArgs = compileFromArgs;
         this.args = args;
+    }
+
+    static create(ctx: ParsingContext, name: string, type: Type, compileFromArgs: Compile, args: Array<Expression>) {
+        return foldConstantExpression(ctx, new CompoundExpression(ctx.key, name, type, compileFromArgs, args));
     }
 
     compile(ctx: CompilationContext) {
@@ -102,7 +108,7 @@ class CompoundExpression implements Expression {
             }
 
             if (signatureContext.errors.length === 0) {
-                return new CompoundExpression(context.key, op, type, compileFromArgs, parsedArgs);
+                return CompoundExpression.create(context, op, type, compileFromArgs, parsedArgs);
             }
         }
 
@@ -145,6 +151,26 @@ function stringifySignature(signature: Signature): string {
     } else {
         return `(${toString(signature.type)}...)`;
     }
+}
+
+const unfoldable = [ 'error', 'get', 'has', 'properties', 'id', 'geometry-type', 'zoom' ];
+function foldConstantExpression(ctx: ParsingContext, expression: CompoundExpression) {
+    const isConstant = unfoldable.indexOf(expression.name) < 0 &&
+        !expression.args.some(a => !(a instanceof Literal));
+
+    if (isConstant) {
+        const cc = new CompilationContext();
+        const ec = evaluationContext();
+        const compiled = cc.compileToFunction(expression, ec);
+        try {
+            const value = compiled({}, {});
+            return new Literal(expression.key, expression.type, value);
+        } catch (e) {
+            return ctx.error(e.message);
+        }
+    }
+
+    return expression;
 }
 
 module.exports = {

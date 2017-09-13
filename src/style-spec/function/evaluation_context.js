@@ -61,6 +61,7 @@ function ensure(condition: any, message: string) {
 
 module.exports = () => ({
     types: types,
+    Color: Color,
 
     ensure: ensure,
     error: (msg: string) => ensure(false, msg),

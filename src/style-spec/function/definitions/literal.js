@@ -4,7 +4,7 @@ const { Color, isValue, typeOf } = require('../values');
 
 import type { Type } from '../types';
 import type { Value }  from '../values';
-import type { Expression, ParsingContext }  from '../expression';
+import type { Expression, ParsingContext, CompilationContext }  from '../expression';
 
 class Literal implements Expression {
     key: string;
@@ -42,9 +42,20 @@ class Literal implements Expression {
         return new Literal(context.key, type, value);
     }
 
-    compile() {
-        const value = JSON.stringify(this.value);
-        return typeof this.value === 'object' ?  `(${value})` : value;
+    compile(ctx: CompilationContext) {
+        let value;
+        if (this.type.kind === 'Color') {
+            value = `(new $this.Color(${(this.value: any).join(', ')}))`;
+        } else {
+            value = JSON.stringify(this.value);
+        }
+
+        if (typeof this.value === 'object' && this.value !== null) {
+            const v = ctx.addVariable(value);
+            return v;
+        } else {
+            return value;
+        }
     }
 
     serialize() {

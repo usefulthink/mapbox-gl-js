@@ -1,0 +1,35 @@
+{
+  "expectExpressionType": {"kind": "Color"},
+  "expression": [
+    "curve",
+    ["step"],
+    ["get", "x"],
+    "black",
+    0,
+    "red",
+    10,
+    "blue"
+  ],
+  "inputs": [
+    [{}, {"properties": {"x": -1}}],
+    [{}, {"properties": {"x": 0}}],
+    [{}, {"properties": {"x": 5}}],
+    [{}, {"properties": {"x": 10}}],
+    [{}, {"properties": {"x": 11}}]
+  ],
+  "expected": {
+    "compiled": {
+      "result": "success",
+      "isFeatureConstant": false,
+      "isZoomConstant": true,
+      "type": "Color"
+    },
+    "outputs": [
+      [0, 0, 0, 1],
+      [1, 0, 0, 1],
+      [1, 0, 0, 1],
+      [0, 0, 1, 1],
+      [0, 0, 1, 1]
+    ]
+  }
+}
