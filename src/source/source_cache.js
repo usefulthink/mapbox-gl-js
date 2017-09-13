@@ -235,7 +235,7 @@ class SourceCache extends Evented {
         const renderables = this.getRenderableIds();
         for (let i = 0; i < renderables.length; i++) {
             const borderId = renderables[i];
-            if (tile.neighboringTiles && tile.neighboringTiles[borderId]){
+            if (tile.neighboringTiles && tile.neighboringTiles[borderId]) {
                 const borderTile = this.getTileByID(borderId);
                 fillBorder(tile, borderTile);
                 fillBorder(borderTile, tile);

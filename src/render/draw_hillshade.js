@@ -1,4 +1,10 @@
-'use strict';
+// @flow
+
+import type Painter from './painter';
+import type SourceCache from '../source/source_cache';
+import type TileCoord from '../source/tile_coord';
+import type StyleLayer from '../style/style_layer';
+
 
 const EXTENT = require('../data/extent');
 const mat4 = require('@mapbox/gl-matrix').mat4;
@@ -10,7 +16,7 @@ const TERRAIN_TILE_HEIGHT = 256;
 
 module.exports = drawHillshade;
 
-function drawHillshade(painter, sourceCache, layer, coords) {
+function drawHillshade(painter: Painter, sourceCache: SourceCache, layer: StyleLayer, coords: Array<TileCoord>) {
 
     if (painter.renderPass === 'opaque' || painter.renderPass === '3d') return;
 
@@ -27,17 +33,17 @@ function drawHillshade(painter, sourceCache, layer, coords) {
         const tile = sourceCache.getTile(coord);
         if (!tile.texture) prepareHillshade(painter, tile, layer);
 
-        tile.bordersLoaded = true;
+        let bordersLoaded = true;
         if (painter.transform.tileZoom < maxzoom) {
             for (const key in tile.neighboringTiles) {
                 if (!tile.neighboringTiles[key].backfilled && sourceCache._tiles[key]) {
-                    tile.bordersLoaded = false;
+                    bordersLoaded = false;
                     break;
                 }
             }
         }
 
-        renderHillshade(painter, tile, layer);
+        renderHillshade(painter, tile, layer, bordersLoaded);
     }
 
 }
@@ -45,19 +51,25 @@ function drawHillshade(painter, sourceCache, layer, coords) {
 // TODO create OffscreenTexture class for extrusions + terrain
 // preprocessing ?
 class HillshadeTexture {
-    constructor (gl, painter, layer, tile) {
+
+    gl: WebGLRenderingContext;
+    fbo: WebGLFramebuffer;
+    height: number;
+    width: number;
+    painter: Painter;
+
+    constructor (gl: WebGLRenderingContext, painter: Painter, tile) {
         this.gl = gl;
         this.width = TERRAIN_TILE_WIDTH;
         this.height = TERRAIN_TILE_HEIGHT;
         this.painter = painter;
-        this.layer = layer;
 
         gl.activeTexture(gl.TEXTURE0);
         tile.texture = gl.createTexture();
 
         // this is needed because SpriteAtlas sets this value to true, which causes the 0 alpha values that we pass to
         // the terrain_prepare shaders to 0 out all values and render the texture blank.
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false: any);
 
         gl.bindTexture(gl.TEXTURE_2D, tile.texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -77,8 +89,8 @@ class HillshadeTexture {
     }
 
     unbindFramebuffer() {
-        const gl = this.painter.gl;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+        const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, this.painter.width, this.painter.height);
     }
 }
@@ -86,7 +98,7 @@ class HillshadeTexture {
 function setLight(program, painter) {
     const gl = painter.gl;
     const light = painter.style.light;
-    const lightPositionRadians = light.getLightProperty('position').map((el, i)=>{ return i === 0 ? el : el * Math.PI / 180; });
+    const lightPositionRadians = (light.getLightProperty('position'): any).map((el, i)=>{ return i === 0 ? el : el * Math.PI / 180; });
 
     // modify azimuthal angle by map rotation if light is anchored at the viewport
     if (light.calculated.anchor === 'viewport')  lightPositionRadians[1] -= painter.transform.angle;
@@ -95,28 +107,28 @@ function setLight(program, painter) {
     gl.uniform1f(program.uniforms.u_lightintensity, light.calculated.intensity);
 }
 
-function renderHillshade(painter, tile, layer){
-        const gl = painter.gl;
-        const program = painter.useProgram('hillshade');
-        const posMatrix = painter.transform.calculatePosMatrix(tile.coord);
-        setLight(program, painter);
+function renderHillshade(painter, tile, layer, bordersLoaded) {
+    const gl = painter.gl;
+    const program = painter.useProgram('hillshade');
+    const posMatrix = painter.transform.calculatePosMatrix(tile.coord);
+    setLight(program, painter);
 
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tile.texture);
-        gl.uniformMatrix4fv(program.uniforms.u_matrix, false, posMatrix);
-        gl.uniform1i(program.uniforms.u_image, 0);
-        gl.uniform1i(program.uniforms.u_mode, 7);
-        gl.uniform1f(program.uniforms.u_mipmap, 0);
-        gl.uniform4fv(program.uniforms.u_shadow, layer.paint["hillshade-shadow-color"]);
-        gl.uniform4fv(program.uniforms.u_highlight, layer.paint["hillshade-highlight-color"]);
-        gl.uniform4fv(program.uniforms.u_accent, layer.paint["hillshade-accent-color"]);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tile.texture);
+    gl.uniformMatrix4fv(program.uniforms.u_matrix, false, posMatrix);
+    gl.uniform1i(program.uniforms.u_image, 0);
+    gl.uniform1i(program.uniforms.u_mode, 7);
+    gl.uniform1f(program.uniforms.u_mipmap, 0);
+    gl.uniform4fv(program.uniforms.u_shadow, layer.paint["hillshade-shadow-color"]);
+    gl.uniform4fv(program.uniforms.u_highlight, layer.paint["hillshade-highlight-color"]);
+    gl.uniform4fv(program.uniforms.u_accent, layer.paint["hillshade-accent-color"]);
 
-        // this is to prevent purple/yellow seams from flashing when the dem tiles haven't been totally
-        // backfilled from their neighboring tiles.
-        const buffer = tile.bordersLoaded ? painter.rasterBoundsBuffer : painter.incompleteHillshadeBoundsBuffer;
-        const vao = tile.bordersLoaded ? painter.rasterBoundsVAO : painter.incompleteHillshadeBoundsVAO;
-        vao.bind(gl, program, buffer);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
+    // this is to prevent purple/yellow seams from flashing when the dem tiles haven't been totally
+    // backfilled from their neighboring tiles.
+    const buffer = bordersLoaded ? painter.rasterBoundsBuffer : painter.incompleteHillshadeBoundsBuffer;
+    const vao = bordersLoaded ? painter.rasterBoundsVAO : painter.incompleteHillshadeBoundsVAO;
+    vao.bind(gl, program, buffer);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
 }
 
 
@@ -132,46 +144,46 @@ function prepareHillshade(painter, tile, layer) {
     // base 10 - 0, 1, 6, 236 (this order is reversed in the resulting array via the overflow.
     // first 8 bits represent 236, so the r component of the texture pixel will be 236 etc.)
     // base 2 - 0000 0000, 0000 0001, 0000 0110, 1110 1100
+    if (tile.dem && tile.dem.data) {
+        const pixelData = tile.dem.data.map((l)=> {
+            return {width: l.width + 2 * l.border, height: l.height + 2 * l.border, data: new Uint8Array(l.data.buffer)};
+        });
 
-    const pixelData = tile.dem.data.map((l)=> {
-        return {width: l.width + 2 * l.border, height: l.height + 2 * l.border, data: new Uint8Array(l.data.buffer)};
-    });
+        const dem = gl.createTexture();
 
-    const dem = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, dem);
 
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, dem);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        for (let i = 0; i < pixelData.length; i++) {
+            gl.texImage2D(gl.TEXTURE_2D, i, gl.RGBA, pixelData[i].width, pixelData[i].height, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixelData[i].data);
+        }
 
-    for (let i = 0; i < pixelData.length; i++) {
-        gl.texImage2D(gl.TEXTURE_2D, i, gl.RGBA, pixelData[i].width, pixelData[i].height, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixelData[i].data);
+        const hillshadeTexture = new HillshadeTexture(gl, painter, tile);
+
+        const matrix = mat4.create();
+        // Flip rendering at y axis.
+        mat4.ortho(matrix, 0, EXTENT, -EXTENT, 0, 0, 1);
+        mat4.translate(matrix, matrix, [0, -EXTENT, 0]);
+
+        const program = painter.useProgram('hillshadePrepare');
+
+        gl.uniformMatrix4fv(program.uniforms.u_matrix, false, matrix);
+
+        gl.uniform1f(program.uniforms.u_zoom, tile.coord.z);
+        gl.uniform2fv(program.uniforms.u_dimension, [512, 512]);
+        gl.uniform1i(program.uniforms.u_image, 1);
+
+        const buffer = painter.rasterBoundsBuffer;
+        const vao = painter.rasterBoundsVAO;
+
+        vao.bind(gl, program, buffer);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
+
+        hillshadeTexture.unbindFramebuffer();
     }
-
-    const hillshadeTexture = new HillshadeTexture(gl, painter, layer, tile);
-
-    const matrix = mat4.create();
-    // Flip rendering at y axis.
-    mat4.ortho(matrix, 0, EXTENT, -EXTENT, 0, 0, 1);
-    mat4.translate(matrix, matrix, [0, -EXTENT, 0]);
-
-    const program = painter.useProgram('hillshadePrepare');
-
-    gl.uniformMatrix4fv(program.uniforms.u_matrix, false, matrix);
-
-    gl.uniform1f(program.uniforms.u_zoom, tile.coord.z);
-    gl.uniform2fv(program.uniforms.u_dimension, [512, 512]);
-    gl.uniform1i(program.uniforms.u_image, 1);
-
-    const buffer = painter.rasterBoundsBuffer;
-    const vao = painter.rasterBoundsVAO;
-
-    vao.bind(gl, program, buffer);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, buffer.length);
-
-    hillshadeTexture.unbindFramebuffer();
-    tile.prepared = true;
 }
