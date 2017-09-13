@@ -187,6 +187,12 @@ class Tile {
         this.state = 'unloaded';
     }
 
+    unloadDEMData(){
+        this.dem = null;
+        this.neighboringTiles = null;
+        this.state = 'unloaded';
+    }
+
     redoPlacement(source: any) {
         if (source.type !== 'vector' && source.type !== 'geojson') {
             return;
