@@ -221,8 +221,8 @@ function placeFirstAndLastGlyph(fontScale: number, glyphOffsetArray: any, lineOf
     const lineStartIndex = symbol.lineStartIndex;
     const lineEndIndex = symbol.lineStartIndex + symbol.lineLength;
 
-    const firstGlyphOffset = glyphOffsetArray.getoffsetX(symbol.glyphStartIndex * glyphOffsetArray.stride);
-    const lastGlyphOffset = glyphOffsetArray.getoffsetX((glyphEndIndex - 1) * glyphOffsetArray.stride);
+    const firstGlyphOffset = glyphOffsetArray.getoffsetX(symbol.glyphStartIndex);
+    const lastGlyphOffset = glyphOffsetArray.getoffsetX(glyphEndIndex - 1);
 
     const firstPlacedGlyph = placeGlyphAlongLine(fontScale * firstGlyphOffset, lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
         lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache, returnTileDistance);
@@ -278,7 +278,7 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
         placedGlyphs = [firstAndLastGlyph.first];
         for (let glyphIndex = symbol.glyphStartIndex + 1; glyphIndex < glyphEndIndex - 1; glyphIndex++) {
             // Since first and last glyph fit on the line, we're sure that the rest of the glyphs can be placed
-            placedGlyphs.push(placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(glyphIndex * glyphOffsetArray.stride), lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
+            placedGlyphs.push(placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(glyphIndex), lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
                 lineStartIndex, lineEndIndex, lineVertexArray, labelPlaneMatrix, projectionCache, false));
         }
         placedGlyphs.push(firstAndLastGlyph.last);
@@ -287,7 +287,7 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
         // So, determine whether to flip based on projected angle of the line segment it's on
         if (keepUpright && !flip) {
             const a = project(tileAnchorPoint, posMatrix).point;
-            const tileVertexIndex = (symbol.lineStartIndex + symbol.segment + 1) * lineVertexArray.stride;
+            const tileVertexIndex = (symbol.lineStartIndex + symbol.segment + 1);
             const tileSegmentEnd = new Point(lineVertexArray.getx(tileVertexIndex), lineVertexArray.gety(tileVertexIndex));
             const projectedVertex = project(tileSegmentEnd, posMatrix);
             // We know the anchor will be in the viewport, but the end of the line segment may be
@@ -301,7 +301,7 @@ function placeGlyphsAlongLine(symbol, fontSize, flip, keepUpright, posMatrix, la
                 return { needsFlipping: true };
             }
         }
-        const singleGlyph = placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(symbol.glyphStartIndex * glyphOffsetArray.stride), lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
+        const singleGlyph = placeGlyphAlongLine(fontScale * glyphOffsetArray.getoffsetX(symbol.glyphStartIndex), lineOffsetX, lineOffsetY, flip, anchorPoint, tileAnchorPoint, symbol.segment,
             symbol.lineStartIndex, symbol.lineStartIndex + symbol.lineLength, lineVertexArray, labelPlaneMatrix, projectionCache, false);
         if (!singleGlyph)
             return { notEnoughRoom: true };
@@ -378,15 +378,15 @@ function placeGlyphAlongLine(offsetX: number,
 
         current = projectionCache[currentIndex];
         if (current === undefined) {
-            const lineVertexIndex = currentIndex * lineVertexArray.stride;
-            const currentVertex = new Point(lineVertexArray.getx(lineVertexIndex), lineVertexArray.gety(lineVertexIndex));
+
+            const currentVertex = new Point(lineVertexArray.getx(currentIndex), lineVertexArray.gety(currentIndex));
             const projection = project(currentVertex, labelPlaneMatrix);
             if (projection.signedDistanceFromCamera > 0) {
                 current = projectionCache[currentIndex] = projection.point;
             } else {
                 // The vertex is behind the plane of the camera, so we can't project it
                 // Instead, we'll create a vertex along the line that's far enough to include the glyph
-                const previousLineVertexIndex = (currentIndex - dir) * lineVertexArray.stride;
+                const previousLineVertexIndex = currentIndex - dir;
                 const previousTilePoint = distanceToPrev === 0 ?
                     tileAnchorPoint :
                     new Point(lineVertexArray.getx(previousLineVertexIndex), lineVertexArray.gety(previousLineVertexIndex));
@@ -414,7 +414,7 @@ function placeGlyphAlongLine(offsetX: number,
         angle: segmentAngle,
         tileDistance: returnTileDistance ?
             {
-                prevTileDistance: (currentIndex - dir) === initialIndex ? 0 : lineVertexArray.gettileUnitDistanceFromAnchor((currentIndex - dir) * lineVertexArray.stride),
+                prevTileDistance: (currentIndex - dir) === initialIndex ? 0 : lineVertexArray.gettileUnitDistanceFromAnchor(currentIndex - dir),
                 lastSegmentViewportDistance: absOffsetX - distanceToPrev
             } : null
     };

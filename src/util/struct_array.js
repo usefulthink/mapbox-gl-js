@@ -320,8 +320,10 @@ function createStructArrayType(options: StructArrayTypeParameters): Class<Struct
     StructType.prototype.alignment = alignment;
     StructType.prototype.size = size;
 
+    let stride = 0;
     for (const member of members) {
         for (let c = 0; c < member.components; c++) {
+            stride++;
             let name = member.name;
             if (member.components > 1) {
                 name += c;
@@ -347,7 +349,7 @@ function createStructArrayType(options: StructArrayTypeParameters): Class<Struct
 
     structArrayTypeCache[key] = StructArrayType;
 
-    StructArrayType.prototype.stride = 0;
+    let index = 0;
     for (const member of members) {
         for (let c = 0; c < member.components; c++) {
             let name = `get${member.name}`;
@@ -357,7 +359,7 @@ function createStructArrayType(options: StructArrayTypeParameters): Class<Struct
             if (name in StructArrayType.prototype) {
                 throw new Error(`${name} is a reserved name and cannot be used as a member name.`);
             }
-            StructArrayType.prototype[name] = new Function(['index'], `return this.flattenedArray[index + ${StructArrayType.prototype.stride++}];`)
+            StructArrayType.prototype[name] = new Function(['index'], `return this.flattenedArray[index * ${stride} + ${index++}];`);
         }
     }
 
