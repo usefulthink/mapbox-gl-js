@@ -421,6 +421,8 @@ class SymbolBucket implements Bucket {
             this.placedIconArray = new PlacedSymbolArray(options.placedIconArray);
             this.glyphOffsetArray = new GlyphOffsetArray(options.glyphOffsetArray);
             this.lineVertexArray = new LineVertexArray(options.lineVertexArray);
+            this.lineVertexArray.flatten();
+            this.glyphOffsetArray.flatten();
 
             this.symbolInstances = options.symbolInstances;
         } else {

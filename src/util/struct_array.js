@@ -98,12 +98,15 @@ class StructArray {
     float32: ?Float32Array;
     float64: ?Float64Array;
 
+    flattenedArray: ?Array<number>;
+
     // The following properties are defined on the prototype.
     members: Array<StructArrayMember>;
     StructType: typeof Struct;
     bytesPerElement: number;
     _usedTypes: Array<ViewType>;
     emplaceBack: Function;
+    stride: number;
 
     constructor(serialized?: SerializedStructArray) {
         this.isTransferred = false;
@@ -224,6 +227,16 @@ class StructArray {
 
         return array;
     }
+
+    flatten() {
+        this.flattenedArray = [];
+        for (let i = 0; i < this.length; i++) {
+            const item = this.get(i);
+            for (const member of this.members) {
+                this.flattenedArray.push(item[member.name]);
+            }
+        }
+    }
 }
 
 export type { StructArray as StructArray };
@@ -333,6 +346,20 @@ function createStructArrayType(options: StructArrayTypeParameters): Class<Struct
     StructArrayType.prototype._usedTypes = usedTypes;
 
     structArrayTypeCache[key] = StructArrayType;
+
+    StructArrayType.prototype.stride = 0;
+    for (const member of members) {
+        for (let c = 0; c < member.components; c++) {
+            let name = `get${member.name}`;
+            if (member.components > 1) {
+                name += c;
+            }
+            if (name in StructArrayType.prototype) {
+                throw new Error(`${name} is a reserved name and cannot be used as a member name.`);
+            }
+            StructArrayType.prototype[name] = new Function(['index'], `return this.flattenedArray[index + ${StructArrayType.prototype.stride++}];`)
+        }
+    }
 
     return StructArrayType;
 }
