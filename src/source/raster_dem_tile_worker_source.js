@@ -31,6 +31,7 @@ class RasterDEMTileWorkerSource {
         this.loading[source][uid] = dem;
         dem.loadFromImage(params.rawImageData);
         const transferrables = [];
+        delete this.loading[source][uid];
 
         this.loaded[source] = this.loaded[source] || {};
         this.loaded[source][uid] = dem;
