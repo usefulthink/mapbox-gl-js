@@ -76,7 +76,7 @@ var map = window.map = new mapboxgl.Map({
         if (resourceType === 'Tile' && url.search('terrain')) {
             return {
                 url: url.replace('@2x.webp', '.pngraw')
-            }
+            };
         }
     }
 });

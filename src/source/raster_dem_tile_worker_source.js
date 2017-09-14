@@ -1,4 +1,4 @@
-const WorkerTile = require('./worker_tile');
+// @flow
 const {DEMData} = require('../data/dem_data');
 
 
@@ -9,10 +9,12 @@ const {DEMData} = require('../data/dem_data');
  */
 
 class RasterDEMTileWorkerSource {
+    actor: any;
+    loaded: {[string]: any};
+    loading: {[string]: any};
 
-    constructor(actor, layerIndex) {
+    constructor(actor: any) {
         this.actor = actor;
-        this.layerIndex = layerIndex;
         this.loading = {};
         this.loaded = {};
     }
@@ -20,7 +22,7 @@ class RasterDEMTileWorkerSource {
     /**
      * Implements {@link WorkerSource#loadTile}.
      */
-    loadTile(params, callback) {
+    loadTile(params: any, callback: any) {
         const source = params.source,
             uid = params.uid;
 
@@ -45,7 +47,7 @@ class RasterDEMTileWorkerSource {
      * @param params.source The id of the source for which we're loading this tile.
      * @param params.uid The UID for this tile.
      */
-    removeTile(params) {
+    removeTile(params: any) {
         const loaded = this.loaded[params.source],
             uid = params.uid;
         if (loaded && loaded[uid]) {
